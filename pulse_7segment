@@ -58,7 +58,7 @@ if (pulseSensor.sawStartOfBeat()) {            // Constantly test to see if "a b
  Serial.print("BPM: ");                        // Print phrase "BPM: " 
  Serial.println(myBPM);                        // Print the value inside of myBPM. 
  display.showNumberDec(myBPM, false, 3,1);
-  delay(5);  //Pulse display 
+  delay(1000);  //Pulse display 
 }
 
   delay(20);                    // considered best practice in a simple sketch.
