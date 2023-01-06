@@ -1,4 +1,4 @@
-// Author Dinesh
+// Author Rajeev
 #include<Servo.h>
 Servo Servo1;
 
