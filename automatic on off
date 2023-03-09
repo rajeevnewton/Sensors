@@ -1,0 +1,28 @@
+int sensorValue = 0;
+
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(A0, INPUT);
+  pinMode(13, OUTPUT);
+}
+
+void loop()
+{
+ 
+  sensorValue = analogRead(A0);
+  Serial.println("sensorValue");
+  Serial.println(sensorValue);
+  if (sensorValue > 500)
+  {
+    Serial.println("LED OFF");
+    digitalWrite(13, LOW); 
+    delay(100);
+  }
+  else{
+    Serial.println("LED ON");
+    digitalWrite(13, HIGH);
+    delay(100); 
+  }
+  
+}
