@@ -1,0 +1,16 @@
+if (
+
+( myhour == 20 &&  myminute == 23 ) ||
+ ( myhour == 20 &&  myminute == 23 ) 
+
+)
+    {
+      //digital.Write(13,HIGH);
+      Serial.print("Alaram ON");
+    }
+    if ( ( myhour == 20 ) && ( myminute == 24 ) || ( myhour == 20 ) && ( myminute == 24 ) )
+    {
+      //digital.Write(13,LOW);
+      Serial.print("Alaram OFF");
+    }
+    delay(1000);
