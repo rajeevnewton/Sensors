@@ -1,0 +1,102 @@
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+// Define OLED display width and height
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+// Define OLED reset pin
+#define OLED_RESET -1
+
+// Initialize the OLED display
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Define pins for the ultrasonic sensor, buzzer, and LED
+#define trigPin 9
+#define echoPin 10
+#define buzzerPin 8
+#define ledPin 7
+const int ground = 11;
+
+// Define the flood distance threshold in cm
+const int floodDistance = 10; // Adjust this distance as needed
+
+void setup() {
+  Serial.begin(9600);
+  
+  // Initialize pins
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(ledPin, OUTPUT);
+  pinMode(ground, OUTPUT);
+  digitalWrite(ground, LOW);
+
+  // Initialize the OLED display
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 allocation failed");
+    while (true); // Don't proceed, loop forever
+  }
+  display.clearDisplay();
+  display.setTextSize(0.20);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Flood Detection System");
+  display.display();
+  delay(2000); // Show initialization message
+  
+  Serial.println("Flood Detection System Initialized");
+}
+
+void loop() {
+  // Trigger the ultrasonic sensor
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  // Measure the duration of the echo pulse
+  long duration = pulseIn(echoPin, HIGH);
+
+  // Calculate the distance in cm
+  int distance = duration * 0.034 / 2;
+  
+  // Print distance to serial monitor
+  Serial.print("Distance to water: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  // Clear the display for updated readings
+  display.clearDisplay();
+  display.setCursor(0, 0);
+
+  // Display distance on OLED
+  display.print("Distance to water: ");
+  display.print(distance);
+  display.println(" cm");
+
+  // Check if the distance is below the flood threshold
+  if (distance <= floodDistance) {
+    Serial.println("Flood Alert! Take immediate action!");
+    
+    // Activate buzzer and LED as flood warning
+    digitalWrite(buzzerPin, HIGH);
+    digitalWrite(ledPin, HIGH);
+
+    // Display flood warning message on OLED
+    display.setCursor(0, 20);
+    display.setTextSize(2); // Make warning text larger
+    display.println("Flood Detected!");
+  } else {
+    // Turn off buzzer and LED if safe
+    digitalWrite(buzzerPin, LOW);
+    digitalWrite(ledPin, LOW);
+  }
+
+  // Update display with new information
+  display.display();
+  
+  // Delay to avoid excessive serial and display updates
+  delay(1000);
+}
