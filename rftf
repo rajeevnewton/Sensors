@@ -1,0 +1,80 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <RH_ASK.h>
+#include <SPI.h> // Required for RF communication
+
+// Define OLED display width and height
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+// Define OLED reset pin
+#define OLED_RESET -1
+
+// Initialize the OLED display
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Initialize RF communication object
+RH_ASK rf_driver;
+
+char received_message[32]; // Buffer for storing received messages
+
+void setup() {
+  // Initialize Serial communication for debugging
+  Serial.begin(9600);
+  delay(100);
+
+  // Initialize RF communication
+  if (!rf_driver.init()) {
+    Serial.println("RF initialization failed!");
+    while (1); // Halt if RF initialization fails
+  }
+
+  // Initialize the OLED display
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("SSD1306 allocation failed");
+    while (true); // Don't proceed, loop forever
+  }
+
+  // Display initial message on OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.println("Receiver Ready");
+  display.display();
+
+  // Print initial message to Serial Monitor
+  Serial.println("Receiver Ready");
+}
+
+void loop() {
+  uint8_t msg_length = sizeof(received_message);
+
+  // Check if any message is received via RF
+  if (rf_driver.recv((uint8_t *)received_message, &msg_length)) {
+    received_message[msg_length] = '\0'; // Null-terminate the message
+
+    // Print the received message to Serial Monitor
+    Serial.println("Message Received:");
+    Serial.println(received_message);
+
+    // Display received message on OLED
+    display.clearDisplay();
+    display.setTextSize(1); // Ensure proper text size
+    display.setCursor(0, 0);
+    display.println("Received Message:");
+    display.setCursor(0, 10);
+    display.println(received_message);
+    display.display();
+
+    // Additional handling for SOS message
+    if (strcmp(received_message, "SOS") == 0) {
+      Serial.println("ALERT: SOS message received!");
+      // Additional logic can go here (e.g., trigger buzzer)
+    }
+
+    delay(5000); // Wait for 5 seconds before checking again
+  }
+}
+
