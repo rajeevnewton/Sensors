@@ -1,0 +1,82 @@
+#include <AFMotor.h> // Include the Adafruit Motor Shield library
+
+// Define motors
+AF_DCMotor motor1(1); // Motor connected to M1
+AF_DCMotor motor2(2); // Motor connected to M2
+AF_DCMotor motor3(3); // Motor connected to M3
+AF_DCMotor motor4(4); // Motor connected to M4
+
+// Joystick pins
+const int joy1X = A0;
+const int joy1Y = A1;
+const int joy2X = A2;
+const int joy2Y = A3;
+
+// Threshold values for joystick dead zone
+const int lowerThreshold = 460;
+const int upperThreshold = 564;
+
+void setup() {
+  Serial.begin(9600); // Start serial communication at 9600 baud rate
+
+  // Initialize motors to a stopped state
+  motor1.setSpeed(0);
+  motor2.setSpeed(0);
+  motor3.setSpeed(0);
+  motor4.setSpeed(0);
+
+  Serial.println("Joystick and Motor Test Initialized");
+}
+
+void loop() {
+  // Read joystick values
+  int joy1XVal = analogRead(joy1X);
+  int joy1YVal = analogRead(joy1Y);
+  int joy2XVal = analogRead(joy2X);
+  int joy2YVal = analogRead(joy2Y);
+
+  // Print joystick values for debugging
+  Serial.print("Joystick 1 - X: ");
+  Serial.print(joy1XVal);
+  Serial.print(", Y: ");
+  Serial.println(joy1YVal);
+
+  Serial.print("Joystick 2 - X: ");
+  Serial.print(joy2XVal);
+  Serial.print(", Y: ");
+  Serial.println(joy2YVal);
+
+  // Process each joystick axis with corresponding motors
+  processJoystick(joy1YVal, motor1); // Joystick 1 Y-axis controls motor1
+  processJoystick(joy1XVal, motor2); // Joystick 1 X-axis controls motor2
+  processJoystick(joy2YVal, motor3); // Joystick 2 Y-axis controls motor3
+  processJoystick(joy2XVal, motor4); // Joystick 2 X-axis controls motor4
+
+  delay(100); // Small delay for readability in the Serial Monitor
+}
+
+void processJoystick(int axisVal, AF_DCMotor &motor) {
+  // Initialize motor speed
+  int motorSpeed = 0;
+
+  if (axisVal < lowerThreshold) {
+    // Backward motion
+    motorSpeed = map(axisVal, lowerThreshold, 0, 0, 255); // Map joystick value to motor speed
+    motor.setSpeed(motorSpeed);
+    motor.run(BACKWARD);
+    Serial.print("Motor Backward Speed: ");
+    Serial.println(motorSpeed);
+  } else if (axisVal > upperThreshold) {
+    // Forward motion
+    motorSpeed = map(axisVal, upperThreshold, 1023, 0, 255); // Map joystick value to motor speed
+    motor.setSpeed(motorSpeed);
+    motor.run(FORWARD);
+    Serial.print("Motor Forward Speed: ");
+    Serial.println(motorSpeed);
+  } else {
+    // Stop
+    motor.setSpeed(0);
+    motor.run(RELEASE);
+    Serial.println("Motor Stopped");
+  }
+}
