@@ -1,0 +1,74 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+
+// Pin Definitions
+#define IR_Train_Arrival 2  // IR sensor for train arrival
+#define IR_Train_Departure 3 // IR sensor for train departure
+#define LDR_Sensor A0        // LDR sensor for day/night detection
+#define Platform_Lights 4     // LED representing platform lights
+#define Basic_Devices 5       // LED representing essential devices
+
+void setup() {
+    pinMode(IR_Train_Arrival, INPUT);
+    pinMode(IR_Train_Departure, INPUT);
+    pinMode(Platform_Lights, OUTPUT);
+    pinMode(Basic_Devices, OUTPUT);
+    pinMode(LDR_Sensor, INPUT);
+
+    Serial.begin(9600);
+    
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+        Serial.println("OLED initialization failed");
+        while (1);
+    }
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0, 0);
+    display.println("Railway Power System");
+    display.display();
+    delay(2000);
+}
+
+void loop() {
+    int trainArrival = digitalRead(IR_Train_Arrival);
+    int trainDeparture = digitalRead(IR_Train_Departure);
+    int ldrValue = analogRead(LDR_Sensor);
+    
+    bool isNight = (ldrValue < 500); // Threshold for day/night detection
+
+    if (trainArrival == LOW) { // Train Arrived
+        Serial.println("Train Arrived: Turning ON devices");
+        displayMessage("Train Arrived", "Devices ON");
+
+        if (isNight) {
+            digitalWrite(Platform_Lights, HIGH);  // Turn ON platform lights at night
+            Serial.println("Night detected: Platform Lights ON");
+        } else {
+            digitalWrite(Platform_Lights, LOW);   // Keep lights OFF during the day
+            Serial.println("Day detected: Platform Lights OFF");
+        }
+
+        digitalWrite(Basic_Devices, HIGH);  // Keep basic devices ON
+
+    } else if (trainDeparture == LOW) { // Train Departed
+        Serial.println("Train Departed: Managing power");
+        displayMessage("Train Departed", "Saving Power");
+
+        digitalWrite(Platform_Lights, LOW);  // Turn OFF platform lights
+        digitalWrite(Basic_Devices, HIGH);   // Keep essential devices ON
+    }
+}
+
+void displayMessage(String line1, String line2) {
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.println(line1);
+    display.println(line2);
+    display.display();
+}
