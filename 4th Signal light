@@ -1,0 +1,74 @@
+// Define ultrasonic sensor pins
+const int trigPin = 9;  
+const int echoPin = 10;  
+
+// Define traffic light module pins
+const int redLight = 3;   
+const int yellowLight = 4;  
+const int greenLight = 5;  
+
+// Define alert LEDs for Junction 2 and 3
+const int alertLED2 = 6;  
+const int alertLED3 = 7;  
+
+// Variables for distance measurement
+long duration;
+int distance;
+int jamThreshold = 20; // Distance in cm indicating a traffic jam
+int jamTime = 5000; // Duration in milliseconds to confirm a jam
+
+void setup() {
+    pinMode(trigPin, OUTPUT);
+    pinMode(echoPin, INPUT);
+    pinMode(redLight, OUTPUT);
+    pinMode(yellowLight, OUTPUT);
+    pinMode(greenLight, OUTPUT);
+    pinMode(alertLED2, OUTPUT);
+    pinMode(alertLED3, OUTPUT);
+    
+    Serial.begin(9600);
+}
+
+void loop() {
+    // Measure distance using the ultrasonic sensor
+    digitalWrite(trigPin, LOW);
+    delayMicroseconds(2);
+    digitalWrite(trigPin, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(trigPin, LOW);
+    
+    duration = pulseIn(echoPin, HIGH);
+    distance = duration * 0.034 / 2; // Convert to cm
+
+    Serial.print("Distance: ");
+    Serial.println(distance);
+
+    // Traffic light cycle
+    digitalWrite(redLight, HIGH);
+    digitalWrite(yellowLight, LOW);
+    digitalWrite(greenLight, LOW);
+    delay(5000); // Red light duration
+
+    digitalWrite(redLight, LOW);
+    digitalWrite(yellowLight, HIGH);
+    delay(2000); // Yellow light duration
+
+    digitalWrite(yellowLight, LOW);
+    digitalWrite(greenLight, HIGH);
+    delay(5000); // Green light duration
+
+    digitalWrite(greenLight, LOW);
+    
+    // Check for traffic jam
+    if (distance < jamThreshold) {
+        delay(jamTime);
+        digitalWrite(alertLED2, HIGH);
+        digitalWrite(alertLED3, HIGH);
+        Serial.println("Traffic jam detected! Alerting Junction 2 and 3.");
+    } else {
+        digitalWrite(alertLED2, LOW);
+        digitalWrite(alertLED3, LOW);
+    }
+
+    delay(1000); // Short delay before repeating
+}
