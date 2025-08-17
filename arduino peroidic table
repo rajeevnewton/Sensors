@@ -1,0 +1,141 @@
+#include <Keypad.h>
+
+// Keypad setup
+const byte ROWS = 4;
+const byte COLS = 4;
+char keys[ROWS][COLS] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+byte rowPins[ROWS] = {9, 8, 7, 6}; // Connect to row pinouts
+byte colPins[COLS] = {5, 4, 3, 2}; // Connect to column pinouts
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+// LED pins (representing different categories)
+const int METAL_LED = 10;       // Red LED for metals
+const int NONMETAL_LED = 11;    // Green LED for non-metals
+const int METALLOID_LED = 12;    // Blue LED for metalloids
+
+// Element data structure
+struct Element {
+  int atomicNumber;
+  char symbol[3];
+  char name[20];
+  char category; // 'M' for metal, 'N' for non-metal, 'L' for metalloid
+};
+
+// Sample elements database (can be expanded to all 118 elements)
+Element elements[] = {
+  {1, "H", "Hydrogen", 'N'},
+  {2, "He", "Helium", 'N'},
+  {3, "Li", "Lithium", 'M'},
+  {4, "Be", "Beryllium", 'M'},
+  {5, "B", "Boron", 'L'},
+  {6, "C", "Carbon", 'N'},
+  {7, "N", "Nitrogen", 'N'},
+  {8, "O", "Oxygen", 'N'},
+  {9, "F", "Fluorine", 'N'},
+  {10, "Ne", "Neon", 'N'},
+  {11, "Na", "Sodium", 'M'},
+  {12, "Mg", "Magnesium", 'M'},
+  {13, "Al", "Aluminum", 'M'},
+  {14, "Si", "Silicon", 'L'},
+  {15, "P", "Phosphorus", 'N'},
+  {16, "S", "Sulfur", 'N'},
+  {17, "Cl", "Chlorine", 'N'},
+  {18, "Ar", "Argon", 'N'}
+};
+
+void setup() {
+  Serial.begin(9600);
+  Serial.println("Interactive Periodic Table");
+  Serial.println("Enter atomic number (1-18) or 0 to clear");
+  
+  // Initialize LED pins
+  pinMode(METAL_LED, OUTPUT);
+  pinMode(NONMETAL_LED, OUTPUT);
+  pinMode(METALLOID_LED, OUTPUT);
+  
+  // Start with all LEDs off
+  clearLEDs();
+}
+
+void loop() {
+  char key = keypad.getKey();
+  
+  if (key) {
+    if (key == '0') {
+      clearLEDs();
+      Serial.println("Selection cleared");
+    } else if (key >= '1' && key <= '9') {
+      int atomicNum = key - '0'; // Convert char to int
+      displayElement(atomicNum);
+    } else if (key == 'A') {
+      displayElement(10);
+    } else if (key == 'B') {
+      displayElement(11);
+    } else if (key == 'C') {
+      displayElement(12);
+    } else if (key == 'D') {
+      displayElement(13);
+    } else if (key == '*') {
+      displayElement(14);
+    } else if (key == '#') {
+      displayElement(15);
+    }
+    // Add more cases if you have more elements mapped to keys
+  }
+}
+
+void displayElement(int atomicNum) {
+  if (atomicNum < 1 || atomicNum > sizeof(elements)/sizeof(Element)) {
+    Serial.print("Element ");
+    Serial.print(atomicNum);
+    Serial.println(" not in database");
+    return;
+  }
+  
+  // Get the element data
+  Element e = elements[atomicNum-1]; // Arrays are 0-indexed
+  
+  // Print element info to serial monitor
+  Serial.print("Atomic Number: ");
+  Serial.println(e.atomicNumber);
+  Serial.print("Symbol: ");
+  Serial.println(e.symbol);
+  Serial.print("Name: ");
+  Serial.println(e.name);
+  Serial.print("Category: ");
+  Serial.println(getCategoryName(e.category));
+  
+  // Light up the appropriate LED
+  clearLEDs();
+  switch(e.category) {
+    case 'M': // Metal
+      digitalWrite(METAL_LED, HIGH);
+      break;
+    case 'N': // Non-metal
+      digitalWrite(NONMETAL_LED, HIGH);
+      break;
+    case 'L': // Metalloid
+      digitalWrite(METALLOID_LED, HIGH);
+      break;
+  }
+}
+
+void clearLEDs() {
+  digitalWrite(METAL_LED, LOW);
+  digitalWrite(NONMETAL_LED, LOW);
+  digitalWrite(METALLOID_LED, LOW);
+}
+
+String getCategoryName(char category) {
+  switch(category) {
+    case 'M': return "Metal";
+    case 'N': return "Non-metal";
+    case 'L': return "Metalloid";
+    default: return "Unknown";
+  }
+}
