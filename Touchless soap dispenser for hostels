@@ -1,0 +1,74 @@
+/*
+ * Touchless Liquid Soap Dispenser
+ * - Relay is OFF initially
+ * - Turns ON when hand is detected
+ * - Automatically turns OFF after dispensing soap
+ */
+
+// Pin connections
+const int irSensorPin = A0;   // Analog pin for IR sensor
+const int relayPin = 7;       // Digital pin for relay control
+
+// Adjustable settings
+const int detectionThreshold = 500;  // Lower value means closer object (adjust based on your sensor)
+const int pumpOnTime = 500;         // Time in milliseconds to keep pump ON (adjust for soap amount)
+const int minInterval = 2000;       // Minimum time between activations in milliseconds
+
+// System variables
+unsigned long lastActivation = 0;
+bool isPumpRunning = false;
+
+void setup() {
+  // Initialize serial monitor for debugging
+  Serial.begin(9600);
+  
+  // Configure pins
+  pinMode(irSensorPin, INPUT);
+  pinMode(relayPin, OUTPUT);
+  
+  // Ensure relay is OFF initially (pump OFF)
+  digitalWrite(relayPin, HIGH);
+  
+  Serial.println("Touchless Soap Dispenser Ready");
+  Serial.println("Relay is OFF initially");
+}
+
+void loop() {
+  // Read IR sensor value (lower value means object is closer)
+  int sensorValue = analogRead(irSensorPin);
+  
+  // Debug output (can be removed after testing)
+  Serial.print("IR Value: ");
+  Serial.print(sensorValue);
+  Serial.print(" | Relay State: ");
+  Serial.println(isPumpRunning ? "ON" : "OFF");
+  
+  // Check if hand is detected below threshold
+  if (sensorValue < detectionThreshold) {
+    // Check if we're not already pumping and enough time has passed
+    if (!isPumpRunning && (millis() - lastActivation > minInterval)) {
+      startPump();
+    }
+  }
+  
+  // Check if pump should be turned OFF
+  if (isPumpRunning && (millis() - lastActivation > pumpOnTime)) {
+    stopPump();
+  }
+  
+  // Small delay to prevent excessive readings
+  delay(100);
+}
+
+void startPump() {
+  digitalWrite(relayPin, LOW);  // Turn relay ON (activates pump)
+  isPumpRunning = true;
+  lastActivation = millis();
+  Serial.println("Pump ACTIVATED - Dispensing soap");
+}
+
+void stopPump() {
+  digitalWrite(relayPin, HIGH);   // Turn relay OFF (stops pump)
+  isPumpRunning = false;
+  Serial.println("Pump DEACTIVATED");
+}
