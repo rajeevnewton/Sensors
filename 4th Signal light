@@ -1,74 +1,190 @@
-// Define ultrasonic sensor pins
-const int trigPin = 9;  
-const int echoPin = 10;  
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-// Define traffic light module pins
-const int redLight = 3;   
-const int yellowLight = 4;  
-const int greenLight = 5;  
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
-// Define alert LEDs for Junction 2 and 3
-const int alertLED2 = 6;  
-const int alertLED3 = 7;  
+// Junction 1 pins
+#define red1 13
+#define orange1 12
+#define green1 11
 
-// Variables for distance measurement
+// Junction 2 pins
+#define red2 10
+#define orange2 9
+#define green2 8
+#define blue2 7
+
+// Ultrasonic sensor pins
+#define trigPin 6
+#define echoPin 5
+
+// Additional pin
+#define additionalPin 4
+
+// Variables for ultrasonic sensor
 long duration;
 int distance;
-int jamThreshold = 20; // Distance in cm indicating a traffic jam
-int jamTime = 5000; // Duration in milliseconds to confirm a jam
+const int trafficJamThreshold = 10; // Distance threshold for traffic jam in cm
 
 void setup() {
-    pinMode(trigPin, OUTPUT);
-    pinMode(echoPin, INPUT);
-    pinMode(redLight, OUTPUT);
-    pinMode(yellowLight, OUTPUT);
-    pinMode(greenLight, OUTPUT);
-    pinMode(alertLED2, OUTPUT);
-    pinMode(alertLED3, OUTPUT);
-    
-    Serial.begin(9600);
+  // Initialize OLED display
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  display.println("Traffic System Init");
+  display.display();
+  delay(2000);
+
+  // Set up Junction 1 pins
+  pinMode(red1, OUTPUT);
+  pinMode(orange1, OUTPUT);
+  pinMode(green1, OUTPUT);
+
+  // Set up Junction 2 pins
+  pinMode(red2, OUTPUT);
+  pinMode(orange2, OUTPUT);
+  pinMode(green2, OUTPUT);
+  pinMode(blue2, OUTPUT);
+
+  // Set up ultrasonic sensor pins
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  // Set up additional pin
+  pinMode(additionalPin, OUTPUT);
+  digitalWrite(additionalPin, LOW);
+
+  // Initialize all LEDs to OFF
+  digitalWrite(red1, LOW);
+  digitalWrite(orange1, LOW);
+  digitalWrite(green1, LOW);
+  digitalWrite(red2, LOW);
+  digitalWrite(orange2, LOW);
+  digitalWrite(green2, LOW);
+  digitalWrite(blue2, LOW);
+
+  // Start serial communication for debugging
+  Serial.begin(9600);
 }
 
 void loop() {
-    // Measure distance using the ultrasonic sensor
-    digitalWrite(trigPin, LOW);
-    delayMicroseconds(2);
-    digitalWrite(trigPin, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(trigPin, LOW);
+  // Check for traffic jam at Junction 1
+  if (checkTrafficJam()) {
+    // If traffic jam is detected
+    digitalWrite(red1, HIGH); // RED LED at Junction 1 ON
+    digitalWrite(blue2, HIGH); // BLUE LED at Junction 2 ON
+
+    // Ensure other LEDs are OFF
+    digitalWrite(orange1, LOW);
+    digitalWrite(green1, LOW);
+    digitalWrite(red2, LOW);
+    digitalWrite(green2, LOW);
+
+    // Display traffic jam message on OLED
+    display.clearDisplay();
+    display.setCursor(0,0);
+    display.println("TRAFFIC JAM DETECTED");
+    display.println("At Junction 1");
+    display.println("");
+    display.println("J1: RED ON");
+    display.println("J2: BLUE ON");
+    display.println("");
+    display.println("Fourth Signal: Alert");
+    display.display();
     
-    duration = pulseIn(echoPin, HIGH);
-    distance = duration * 0.034 / 2; // Convert to cm
+    Serial.println("Traffic Jam Detected!");
+  } else {
+    // If no traffic jam, proceed with normal traffic light sequence
+    digitalWrite(red1, LOW);
+    digitalWrite(blue2, LOW);
 
-    Serial.print("Distance: ");
-    Serial.println(distance);
+    // Normal traffic light sequence for Junction 1
+    displayStatus("J1: RED ON", "J2: Normal");
+    redOn(red1, orange1, green1);
+    delay(2000);
 
-    // Traffic light cycle
-    digitalWrite(redLight, HIGH);
-    digitalWrite(yellowLight, LOW);
-    digitalWrite(greenLight, LOW);
-    delay(5000); // Red light duration
+    displayStatus("J1: ORANGE ON", "J2: Normal");
+    orangeOn(red1, orange1, green1);
+    delay(2000);
 
-    digitalWrite(redLight, LOW);
-    digitalWrite(yellowLight, HIGH);
-    delay(2000); // Yellow light duration
+    displayStatus("J1: GREEN ON", "J2: Normal");
+    greenOn(red1, orange1, green1);
+    delay(2000);
 
-    digitalWrite(yellowLight, LOW);
-    digitalWrite(greenLight, HIGH);
-    delay(5000); // Green light duration
+    // Normal traffic light sequence for Junction 2
+    displayStatus("J1: Normal", "J2: RED ON");
+    redOn(red2, orange2, green2);
+    delay(2000);
 
-    digitalWrite(greenLight, LOW);
-    
-    // Check for traffic jam
-    if (distance < jamThreshold) {
-        delay(jamTime);
-        digitalWrite(alertLED2, HIGH);
-        digitalWrite(alertLED3, HIGH);
-        Serial.println("Traffic jam detected! Alerting Junction 2 and 3.");
-    } else {
-        digitalWrite(alertLED2, LOW);
-        digitalWrite(alertLED3, LOW);
-    }
+    displayStatus("J1: Normal", "J2: ORANGE ON");
+    orangeOn(red2, orange2, green2);
+    delay(2000);
 
-    delay(1000); // Short delay before repeating
+    displayStatus("J1: Normal", "J2: GREEN ON");
+    greenOn(red2, orange2, green2);
+    delay(2000);
+  }
+}
+
+void displayStatus(const char* j1, const char* j2) {
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.println("Traffic Status:");
+  display.println("");
+  display.println(j1);
+  display.println(j2);
+  display.println("");
+  display.println("Fourth Signal: Normal");
+  display.display();
+}
+
+bool checkTrafficJam() {
+  // Clear the trigPin
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+
+  // Set the trigPin on HIGH state for 10 microseconds
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  // Read the echoPin, returns the sound wave travel time in microseconds
+  duration = pulseIn(echoPin, HIGH);
+
+  // Calculate the distance in cm
+  distance = duration * 0.034 / 2;
+
+  // Print distance to Serial Monitor for debugging
+  Serial.print("Distance: ");
+  Serial.println(distance);
+
+  // If distance is less than the threshold, consider it as a traffic jam
+  return (distance < trafficJamThreshold);
+}
+
+void redOn(int redPin, int orangePin, int greenPin) {
+  digitalWrite(redPin, HIGH);
+  digitalWrite(orangePin, LOW);
+  digitalWrite(greenPin, LOW);
+}
+
+void orangeOn(int redPin, int orangePin, int greenPin) {
+  digitalWrite(redPin, LOW);
+  digitalWrite(orangePin, HIGH);
+  digitalWrite(greenPin, LOW);
+}
+
+void greenOn(int redPin, int orangePin, int greenPin) {
+  digitalWrite(redPin, LOW);
+  digitalWrite(orangePin, LOW);
+  digitalWrite(greenPin, HIGH);
 }
