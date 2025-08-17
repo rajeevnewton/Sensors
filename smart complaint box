@@ -1,0 +1,148 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <Servo.h>
+
+// OLED Display setup
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET    -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// Servo setup
+Servo complaintDoor;
+const int servoPin = 9;
+const int openAngle = 90;   // Angle when door is open
+const int closeAngle = 0;   // Angle when door is closed
+
+// Touch sensor setup
+const int touchSensorPin = 2;
+bool lastTouchState = LOW;
+bool currentTouchState = LOW;
+
+// System variables
+unsigned long lastInteractionTime = 0;
+const unsigned long inactivityTimeout = 10000; // 10 seconds timeout
+
+void setup() {
+  Serial.begin(9600);
+  
+  // Initialize OLED display
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+  
+  // Initialize servo
+  complaintDoor.attach(servoPin);
+  closeDoor(); // Start with door closed
+  
+  // Initialize touch sensor
+  pinMode(touchSensorPin, INPUT);
+  
+  // Show startup message
+  displayStartupMessage();
+  delay(2000);
+  
+  // Show ready message
+  displayReadyMessage();
+}
+
+void loop() {
+  // Check touch sensor
+  currentTouchState = digitalRead(touchSensorPin);
+  
+  // Detect touch (rising edge)
+  if (currentTouchState == HIGH && lastTouchState == LOW) {
+    handleUserInteraction();
+    lastInteractionTime = millis();
+  }
+  
+  // Check for inactivity timeout
+  if (millis() - lastInteractionTime > inactivityTimeout && complaintDoor.read() != closeAngle) {
+    closeDoor();
+    displayReadyMessage();
+  }
+  
+  lastTouchState = currentTouchState;
+  delay(50); // Small delay to debounce
+}
+
+void handleUserInteraction() {
+  openDoor();
+  displayThankYouMessage();
+  
+  // Here you could add code to send data to a dashboard
+  // For example, increment a complaint counter
+  sendComplaintDataToDashboard();
+}
+
+void openDoor() {
+  displayActionMessage("Opening...");
+  complaintDoor.write(openAngle);
+  delay(1000); // Give time for the door to open
+}
+
+void closeDoor() {
+  displayActionMessage("Closing...");
+  complaintDoor.write(closeAngle);
+  delay(1000); // Give time for the door to close
+}
+
+void displayStartupMessage() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println(F("Smart Complaint Box"));
+  display.println(F("-------------------"));
+  display.println(F("Initializing system"));
+  display.println(F("Version 1.0"));
+  display.display();
+}
+
+void displayReadyMessage() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println(F("Smart Complaint Box"));
+  display.println(F("-------------------"));
+  display.println(F("Touch to submit"));
+  display.println(F("a complaint"));
+  display.println(F("-------------------"));
+  display.println(F("Status: Ready"));
+  display.display();
+}
+
+void displayThankYouMessage() {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println(F("Thank you for"));
+  display.println(F("your feedback!"));
+  display.println(F("-------------------"));
+  display.println(F("We will review"));
+  display.println(F("your complaint"));
+  display.println(F("shortly."));
+  display.display();
+}
+
+void displayActionMessage(const char* action) {
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0,0);
+  display.println(F("Smart Complaint Box"));
+  display.println(F("-------------------"));
+  display.println(action);
+  display.display();
+}
+
+void sendComplaintDataToDashboard() {
+  // This function would send data to a connected dashboard
+  // For now, we'll just print to serial monitor
+  Serial.println("New complaint submitted!");
+  // In a real implementation, you might send this via WiFi or other communication
+}
