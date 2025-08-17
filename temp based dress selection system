@@ -1,0 +1,101 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <DHT.h>
+
+#define SCREEN_WIDTH 128 // OLED display width, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
+#define OLED_RESET    -1 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define DHTPIN 2        // Digital pin connected to the DHT sensor
+
+// Uncomment the type of sensor in use:
+#define DHTTYPE DHT11   // DHT 11
+
+DHT dht(DHTPIN, DHTTYPE);
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+void setup() {
+  Serial.begin(9600);
+  
+  // Initialize OLED display
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) { 
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;); // Don't proceed, loop forever
+  }
+  
+  // Show initial display buffer contents on the screen
+  display.display();
+  delay(2000); // Pause for 2 seconds
+  display.clearDisplay();
+  
+  dht.begin();
+}
+
+void loop() {
+  // Wait a few seconds between measurements
+  delay(2000);
+  
+  // Reading temperature or humidity takes about 250 milliseconds!
+  float humidity = dht.readHumidity();
+  // Read temperature as Celsius (the default)
+  float temperature = dht.readTemperature();
+  
+  // Check if any reads failed and exit early (to try again)
+  if (isnan(humidity) || isnan(temperature)) {
+    Serial.println(F("Failed to read from DHT sensor!"));
+    display.clearDisplay();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0,0);
+    display.println("Sensor Error!");
+    display.display();
+    return;
+  }
+  
+  // Determine clothing suggestion based on temperature
+  String clothingSuggestion = getClothingSuggestion(temperature);
+  
+  // Display the results on OLED
+  display.clearDisplay();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  
+  display.setCursor(0,0);
+  display.print("Temp: ");
+  display.print(temperature);
+  display.println(" C");
+  
+  display.setCursor(0,16);
+  display.print("Humidity: ");
+  display.print(humidity);
+  display.println(" %");
+  
+  display.setCursor(0,32);
+  display.println("Dress Suggestion:");
+  display.setCursor(0,48);
+  display.setTextSize(1);
+  display.println(clothingSuggestion);
+  
+  display.display();
+  
+  // Also print to serial monitor for debugging
+  Serial.print(F("Humidity: "));
+  Serial.print(humidity);
+  Serial.print(F("%  Temperature: "));
+  Serial.print(temperature);
+  Serial.print(F("°C "));
+  Serial.print(" - Suggestion: ");
+  Serial.println(clothingSuggestion);
+}
+
+String getClothingSuggestion(float temperature) {
+  if (temperature < 18) {
+    return "Wear: Jacket/Sweater";
+  } else if (temperature >= 18 && temperature <= 28) {
+    return "Wear: Shirt/T-Shirt";
+  } else if (temperature > 28) {
+    return "Wear: Light Cotton";
+  } else {
+    return "Check Sensor";
+  }
+}
