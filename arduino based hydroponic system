@@ -1,0 +1,155 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <DHT.h>
+
+// OLED display setup
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+#define OLED_RESET -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+// DHT11 setup
+#define DHTPIN 2
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// Soil moisture sensor setup for water level
+#define WATER_LEVEL_SENSOR A0
+// Calibration values - adjust based on your sensor in water
+#define DRY_VALUE 620    // Value when sensor is dry (in air)
+#define WET_VALUE 310    // Value when fully submerged in water
+
+// Buzzer setup
+#define BUZZER_PIN 5
+
+// Variables
+int waterLevelPercent = 0;
+int moistureValue = 0;
+float temperature = 0;
+float humidity = 0;
+unsigned long previousMillis = 0;
+const long interval = 2000;  // Update interval in milliseconds
+
+void setup() {
+  Serial.begin(9600);
+  
+  // Initialize OLED
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("SSD1306 allocation failed"));
+    for(;;);
+  }
+  display.display();
+  delay(2000);
+  display.clearDisplay();
+  
+  // Initialize DHT
+  dht.begin();
+  
+  // Initialize buzzer
+  pinMode(BUZZER_PIN, OUTPUT);
+  
+  // Initial display
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  display.println("System Initializing");
+  display.display();
+  delay(1000);
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+  
+  if (currentMillis - previousMillis >= interval) {
+    previousMillis = currentMillis;
+    
+    // Read all sensors
+    readWaterLevel();
+    readDHT();
+    
+    // Check for low water level (below 20%)
+    if (waterLevelPercent < 20) {
+      triggerLowWaterAlert();
+    } else {
+      noTone(BUZZER_PIN);
+    }
+    
+    // Update display
+    updateDisplay();
+  }
+}
+
+void readWaterLevel() {
+  // Read analog value from moisture sensor in water
+  int sensorValue = analogRead(WATER_LEVEL_SENSOR);
+  
+  // Convert to percentage (inverted because higher value means less water)
+  waterLevelPercent = map(sensorValue, DRY_VALUE, WET_VALUE, 0, 100);
+  
+  // Constrain to 0-100%
+  waterLevelPercent = constrain(waterLevelPercent, 0, 100);
+  
+  // For moisture reading (if you want to use the same sensor differently)
+  moistureValue = sensorValue;  // Raw value or you could map differently
+}
+
+void readDHT() {
+  // Read temperature and humidity
+  temperature = dht.readTemperature();
+  humidity = dht.readHumidity();
+  
+  // Check if any reads failed
+  if (isnan(temperature) || isnan(humidity)) {
+    Serial.println("Failed to read from DHT sensor!");
+    temperature = -1;
+    humidity = -1;
+  }
+}
+
+void triggerLowWaterAlert() {
+  tone(BUZZER_PIN, 1000);  // 1kHz tone
+  delay(500);
+  noTone(BUZZER_PIN);
+  delay(500);
+}
+
+void updateDisplay() {
+  display.clearDisplay();
+  
+  // Display header
+  display.setCursor(0,0);
+  display.println("Aeroponic System");
+  display.drawLine(0, 10, 128, 10, WHITE);
+  
+  // Display water level
+  display.setCursor(0,15);
+  display.print("Water Level: ");
+  display.print(waterLevelPercent);
+  display.print("%");
+  
+  // Display moisture (raw value)
+  display.setCursor(0,25);
+  display.print("Moisture Raw: ");
+  display.print(moistureValue);
+  
+  // Display temperature
+  display.setCursor(0,35);
+  display.print("Temp: ");
+  display.print(temperature);
+  display.print(" C");
+  
+  // Display humidity
+  display.setCursor(0,45);
+  display.print("Humidity: ");
+  display.print(humidity);
+  display.print(" %");
+  
+  // Low water warning if needed
+  if (waterLevelPercent < 20) {
+    display.setCursor(0,55);
+    display.print("LOW WATER! ADD MORE");
+  }
+  
+  display.display();
+}
