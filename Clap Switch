@@ -1,0 +1,43 @@
+/*
+ * Simple Clap Switch with Microphone Module and Relay
+ * 
+ * Components:
+ * - Arduino Board
+ * - Sound Detection Module (Microphone)
+ * - Relay Module
+ * 
+ * Connections:
+ * - Microphone OUT to Arduino Digital Pin 2
+ * - Relay IN to Arduino Digital Pin 3
+ */
+
+const int micPin = 2;      // Microphone sensor output
+const int relayPin = 3;    // Relay control pin
+
+void setup() {
+  pinMode(micPin, INPUT);   // Microphone as input
+  pinMode(relayPin, OUTPUT); // Relay as output
+  
+  digitalWrite(relayPin, HIGH); // Start with relay OFF
+  
+  Serial.begin(9600);       // For debugging
+  Serial.println("Clap Switch Ready");
+}
+
+void loop() {
+  // Check if a clap is detected (sound sensor goes LOW when sound is detected)
+  if (digitalRead(micPin) == LOW) {
+    activateRelay();
+    delay(200); // Debounce delay to avoid multiple detections
+  }
+}
+
+void activateRelay() {
+  digitalWrite(relayPin, LOW);  // Turn relay ON
+  Serial.println("Clap detected - Relay ON");
+  
+  delay(1000); // Keep relay ON for 1 second (adjust as needed)
+  
+  digitalWrite(relayPin, HIGH);   // Turn relay OFF
+  Serial.println("Relay OFF");
+}
