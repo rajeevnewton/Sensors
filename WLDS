@@ -1,0 +1,85 @@
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+#define OLED_RESET -1
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+const int rainSensor = A0;
+const int buzzer = 13;
+
+int sensorValue = 0;
+int threshold = 500;   // Adjust according to your sensor
+
+void setup() {
+  
+  pinMode(buzzer, OUTPUT);
+  digitalWrite(buzzer, LOW);
+
+  Serial.begin(9600);
+
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println("OLED Failed");
+    while(true);
+  }
+
+  display.clearDisplay();
+
+  display.setTextSize(2);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(10,20);
+  display.println("Water Leakage Detection");
+  display.display();
+
+  delay(2000);
+}
+
+void loop() {
+
+  sensorValue = analogRead(rainSensor);
+
+  Serial.print("Sensor Value: ");
+  Serial.println(sensorValue);
+
+  display.clearDisplay();
+
+  display.setTextSize(1);
+  display.setCursor(0,0);
+  display.print("Sensor Value:");
+  display.println(sensorValue);
+
+  if(sensorValue < threshold) {
+
+    digitalWrite(buzzer, HIGH);
+
+    display.setTextSize(2);
+    display.setCursor(0,25);
+    display.println("LEAKAGE!");
+    Serial.print("LEAKAGE!");
+    
+    display.setTextSize(1);
+    display.setCursor(0,50);
+    display.println("Water Detected");
+
+  }
+  else {
+
+    digitalWrite(buzzer, LOW);
+
+    display.setTextSize(2);
+    display.setCursor(0,25);
+    display.println("SAFE");
+    Serial.print("SAFE");
+
+    display.setTextSize(1);
+    display.setCursor(0,50);
+    display.println("No Leakage");
+  }
+
+  display.display();
+
+  delay(500);
+}
