@@ -1,0 +1,60 @@
+#include <Servo.h>
+
+#define TRIG_PIN 8
+#define ECHO_PIN 9
+#define SERVO_PIN 3
+
+Servo dustbinServo;
+
+long duration;
+float distance;
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+
+  dustbinServo.attach(SERVO_PIN);
+
+  // Dustbin lid closed position
+  dustbinServo.write(0);
+
+  Serial.println("Automatic Dustbin Started");
+}
+
+void loop() {
+
+  // Clear Trigger pin
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+
+  // Send 10us pulse
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  // Read Echo pulse
+  duration = pulseIn(ECHO_PIN, HIGH);
+
+  // Calculate distance in cm
+  distance = duration * 0.0343 / 2;
+
+  // Print distance on Serial Monitor
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.println(" cm");
+
+  // Open lid if object detected within 20 cm
+  if (distance > 0 && distance <= 20) {
+    Serial.println("Object Detected - Opening Lid");
+
+    dustbinServo.write(90);  // Open lid
+    delay(3000);             // Keep open for 3 seconds
+
+    dustbinServo.write(0);   // Close lid
+    delay(500);
+  }
+
+  delay(200);
+}
